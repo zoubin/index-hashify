@@ -1,4 +1,7 @@
 # index-hashify
+## DEPRECATED
+There are problems with dedupe.
+
 Plugin to apply sha1 index to [browserify](https://www.npmjs.com/package/browserify) rows instead of integers, which is unstable when new rows come and go.
 
 This problem looms when using browserify with [factor-bundle](https://www.npmjs.com/package/factor-bundle). The [pr](https://github.com/substack/deps-sort/pull/13) means to fix it with an option to use sha1 index. You can use this plugin to fix it right now.

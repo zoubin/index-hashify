@@ -1,0 +1,6 @@
+{
+  "devDependencies": {
+    "del": "^2.2.0",
+    "reduce-js": "^9.4.0"
+  }
+}

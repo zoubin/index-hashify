@@ -1,30 +1,54 @@
 # index-hashify
-## DEPRECATED
-There are problems with dedupe.
+[![version](https://img.shields.io/npm/v/index-hashify.svg)](https://www.npmjs.org/package/index-hashify)
+[![status](https://travis-ci.org/zoubin/index-hashify.svg)](https://travis-ci.org/zoubin/index-hashify)
+[![dependencies](https://david-dm.org/zoubin/index-hashify.svg)](https://david-dm.org/zoubin/index-hashify)
+[![devDependencies](https://david-dm.org/zoubin/index-hashify/dev-status.svg)](https://david-dm.org/zoubin/index-hashify#info=devDependencies)
 
-Plugin to apply sha1 index to [browserify](https://www.npmjs.com/package/browserify) rows instead of integers, which is unstable when new rows come and go.
+A [browserify] plugin to replace numeric indexes with hashes.
 
-This problem looms when using browserify with [factor-bundle](https://www.npmjs.com/package/factor-bundle). The [pr](https://github.com/substack/deps-sort/pull/13) means to fix it with an option to use sha1 index. You can use this plugin to fix it right now.
+## The problem with numeric hashes
+[browserify] uses numbers to identify module functions in the final bundle by default.
+Since modules are sorted according to their file paths,
+and those identification numbers are just their corresponding indexes in the sorted array (in most cases),
+they are prone to changing when dependencies inserted and deleted.
 
-[Here](https://github.com/zoubin/deps-sort-integer-index-problem) is an example:
+Suppose there are two modules `'/a.js'` and `'/c.js'`,
+which will get `1` and `2` as their identification number in the final bundle, respectively.
+Now if we add `require('/b.js')` in `'a.js'`,
+`'/c.js'` will get `3` as its identification number even if nothing happens to the original module.
 
-* `a.js` depends upon `base.js`
-* we use `factor-bundle` to build two bundles, and only `base.js` will go to `common.js` (built from `b.bundle()` stream)
-* after bundle, we can see that `base.js` gets id `2`, and `a.js` `1`
-* if we `require('b.js')` in `a.js` (like `a.modified.js`), though `b.js` will be kept out of `common.js`, `base.js` now gets id `3`. That means we have changed the contents of `common.js` and the browser cache will be invalidated.
+That may cause problems in some cases:
+* common shared bundles.
+  When using [factor-bundle], the contents of the common bundle may change due to just the change of identification numbers,
+  and invalidate the application cache for it.
+* hot module replacement.
+  Tools like [browserify-hmr] replace changed modules, but not those who just suffers a identification number change,
+  thus breaking the dependency chain.
+  Suppose there are four modules `a`, `b`, `c`, `d`, and `a` depends on `c`, `b` depends on `d`.
+  Their identification numbers are `1`, `2`, `3`, `4` in the final bundle.
+  So, in `b`, when `require('d')`, it looks up `4` in the module function map.
+  If `a` removes `c` from its dependencies, and `b` receives some minor changes (not modifying its dependencies),
+  then `a`, `b`, `c` are all updated, but `d` keeps.
+  Now `a`, `b`, `d` get `1`, `2`, `4` in the client, but `1`, `2`, `3` in the server,
+  so `b` tries to look up `3` for `d` in the updated module function map,
+  which of course is `undefined` as `d` is not updated.
 
-Browserify gives each row an index at `sort`, according to their sorted orders. And when a new row comes into the deps map, it will be inserted into the sorted rows, thus increasing the index of each row after it.
 
-This plugin will transform `row.index` to `shasum(row.source).slice(0, 7)` before the end of `sort` stage.
+This plugin will take the sha1 of the result of concating the file path (relative to `basedir`) with the contents of the module 
+as the identification number instead, which will not change as long as the module keeps,
+thus fixing the above problems.
 
 ## Usage
 
 ```javascript
-var b = browserify(opts);
-var hashify = require('index-hashify');
-var factor = require('factor-bundle');
+var b = browserify(opts)
+var hashify = require('index-hashify')
 b.plugin(hashify)
- .plugin(factor, factorOpts);
-b.bundle().pipe(process.stdout);
+b.bundle().pipe(process.stdout)
 
 ```
+
+[browserify]: https://github.com/substack/node-browserify
+[factor-bundle]: https://github.com/substack/factor-bundle
+[browserify-hmr]: https://github.com/AgentME/browserify-hmr
+

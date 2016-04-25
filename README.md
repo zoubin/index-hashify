@@ -20,18 +20,10 @@ Now if we add `require('/b.js')` in `'a.js'`,
 That may cause problems in some cases:
 * common shared bundles.
   When using [factor-bundle], the contents of the common bundle may change due to just the change of identification numbers,
-  and invalidate the application cache for it.
+  invalidating the application cache for it.
 * hot module replacement.
-  Tools like [browserify-hmr] replace changed modules, but not those who just suffers a identification number change,
-  thus breaking the dependency chain.
-  Suppose there are four modules `a`, `b`, `c`, `d`, and `a` depends on `c`, `b` depends on `d`.
-  Their identification numbers are `1`, `2`, `3`, `4` in the final bundle.
-  So, in `b`, when `require('d')`, it looks up `4` in the module function map.
-  If `a` removes `c` from its dependencies, and `b` receives some minor changes (not modifying its dependencies),
-  then `a`, `b`, `c` are all updated, but `d` keeps.
-  Now `a`, `b`, `d` get `1`, `2`, `4` in the client, but `1`, `2`, `3` in the server,
-  so `b` tries to look up `3` for `d` in the updated module function map,
-  which of course is `undefined` as `d` is not updated.
+  Tools like [browserify-hmr] replace changed modules, but not those who just suffer a identification number change,
+  thus breaking the dependency chain. (See [browserify-hmr#28](https://github.com/AgentME/browserify-hmr/issues/28))
 
 
 This plugin will take the sha1 of the result of concating the file path (relative to `basedir`) with the contents of the module 
